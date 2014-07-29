@@ -3,8 +3,13 @@ imgseqRepair
 
 *Repairs image sequences by duplicating frames*
 
-## Instructions
+## Setup
+1. Download [zip of this repo](https://github.com/phaseOne/imgseqRepair/archive/master.zip) or clone it
+2. `cd` into the directory
+2. Run `npm install` to add dependencies
+3. Use it
 
+## Instructions
 ### Check for dropped frames
     ./imgseqRepair <path>
 ### Repair dropped frames
