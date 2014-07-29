@@ -1,0 +1,112 @@
+#!/usr/local/bin/node
+
+var fs = require('fs')
+  , colors = require('colors')
+  , argv = require('minimist')(process.argv.slice(2), {'boolean': ['d']})
+  , path = argv._[0] || process.cwd()
+
+var config = {
+  imageTypes: [
+    "dng", "jpg", "jpeg"
+  ],
+  stripDotFiles: true,
+  stripNonImages: true,
+  findMissing: true,
+  dupFrames: false || argv['d']
+}
+
+fs.exists(path, function(exists) {
+  path = (path.slice(-1) !== '/') ? path+'/' : path
+
+  if (exists) fs.readdir(path, function(err, list) {
+
+    stripDotFiles(list, function (list) {
+      splitFiles(list, function (list) {
+        stripNonImages(list, function (list) {
+          findMissing(list, function (bad, job, seqMax) {
+            process.stdout.write(list[0].toFileName('['+list[0][2][0].pad(list[0][2][1])+'-'+list[list.length - 1][2][0].pad(list[0][2][1])+']').inverse)
+            process.stdout.write(bad.length ? (' m:['+bad+']'+' '+bad.length+' dropped, '+list.length+' good, '+(seqMax+1)+' total, '+bad.length/(seqMax+1)*100+'% lost').red : ' 👍\n')
+
+            config.dupFrames ? dupFrames(job, function (res) {
+              process.stdout.write(bad.length ? (' duped:['+bad+']').green+' 👍\n' : '')
+            }) : process.stdout.write('\n')
+          })
+        })
+      })
+    })
+  })
+})
+
+Number.prototype.pad = function(size, dec) {
+  var s = (typeof dec === 'undefined') ? String(this) : this.toFixed(dec)
+  while (s.length < size) s = "0" + s
+  return s
+}
+
+Array.prototype.toFileName = function(seq) {
+  return this[0]+'_'+(typeof seq === 'string' ? seq : ((typeof seq === 'undefined') ? this[2][0] : seq).pad(this[2][1]))+'.'+this[1]
+}
+
+function stripDotFiles (list, cb) {
+  cb(list.filter(function (val, i, arr) {
+    return val[0] !== '.'
+  }))
+}
+
+function splitFiles (list, cb) {
+  cb(list.map(function (val, i, arr) {
+    var name = /^[^.]+/.exec(val)[0]
+      , seq = name.substring(0, name.lastIndexOf('_'))
+      , numS = /[^_\.]\d+$/.exec(name)[0]
+      , numI = parseInt(numS)
+      , numZ = numS.length
+      , ext = /[.]/.exec(val) ? /[^.]+$/.exec(val)[0] : ''
+    return [ seq, ext, [numI, numZ] ]
+  }))
+}
+
+function stripNonImages (list, cb) {
+  cb(list.filter(function (val, i, arr) {
+    return config.imageTypes.some(function (ext, i, arr) {
+      return val[1] === ext
+    })
+  }))
+}
+
+function findMissing (list, cb) {
+  var seqMax = list[list.length - 1][2][0]
+    , exp = 0
+    , offset = 0
+    , job = {}
+
+  cb(list.reduce(function (sto, val, i, arr) {
+    if (val[2][0] !== exp+offset) {
+      var lost = val[2][0] - (exp+offset)
+        , source = arr[i-1].toFileName()
+
+      job[source] = []
+
+      offset += lost
+
+      for (var i = lost; i > 0; i--) {
+        job[source].push(val.toFileName(val[2][0] - i))
+        sto.push(val[2][0] - i)
+      }
+    }
+
+    exp++
+
+    return sto
+  }, []), job, seqMax)
+}
+
+function dupFrames (job, cb) {
+  for (var source in job) {
+    if (job.hasOwnProperty(source)) {
+      job[source].forEach(function (dest, i, arr) {
+        fs.createReadStream(path+source).pipe(fs.createWriteStream(path+dest))
+      })
+    }
+  }
+  cb()
+}

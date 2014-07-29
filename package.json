@@ -1,0 +1,19 @@
+{
+  "name": "imgseqRepair",
+  "version": "0.1.0",
+  "description": "Image sequence repairer",
+  "main": "node app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/phaseOne/imgseqRepair.git"
+  },
+  "author": "Evan Bovie",
+  "license": "MPL-2.0",
+  "dependencies": {
+    "minimist": "0.0.8",
+    "colors": "^0.6.2"
+  }
+}
